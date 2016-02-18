@@ -31,7 +31,7 @@ LIBS := `bat-config --libs`
 # Add classes to the end. Backslash indicates continuation
 # on the next line
 CXXSRCS      = \
-        RunFit.cxx GeMSE_bkg_fit.cxx
+        RunFit.cxx GeMSE_bkg_fit.cxx BCMTF_HPGe.cxx
 
 # ----------------------------------------------------------------------
 # don't change lines below unless you know what you're doing

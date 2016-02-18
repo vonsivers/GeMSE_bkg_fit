@@ -8,7 +8,7 @@
 #include <TString.h>
 #include <TObjArray.h>
 
-#include <BAT/BCMTF.h>
+#include <BCMTF_HPGe.h>
 
 
 // ---------------------------------------------------------
@@ -57,7 +57,7 @@ private:
     int plot_stack();
 
     // set new parameter limits (remove empty bins)
-    void SetNewLimits(BCMTF* m, TString parameter);
+    void SetNewLimits(BCMTF_HPGe* m, TString parameter);
     
     // get first/last empty bin
     int GetEmptyBin(TH1D* hist, TString option);
@@ -115,6 +115,9 @@ private:
     
     // precision of MCMC
     TString fprecision;
+    
+    // integration constant
+    double fint_const;
     
     // CL of limit
     double fCL;

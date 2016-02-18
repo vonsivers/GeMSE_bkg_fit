@@ -116,27 +116,15 @@ int GeMSE_bkg_fit::RunFit() {
     std::cout << "###### Running fit for all processes..." << std::endl;
     
 	// create new fitter object
-	BCMTF* m = new BCMTF();
+	BCMTF_HPGe* m = new BCMTF_HPGe();
     
     
     // set seed for reproducible results
     m->MCMCSetRandomSeed(21340);
     
-    // set precision
-    if (fprecision=="low") {
-        m->MCMCSetPrecision(BCEngineMCMC::kLow);
-    }
-    else if (fprecision=="medium") {
-        m->MCMCSetPrecision(BCEngineMCMC::kMedium);
-    }
-    else if (fprecision=="high") {
-        m->MCMCSetPrecision(BCEngineMCMC::kHigh);
-    }
-    else {
-        std::cout << "##### unknown precision " << fprecision << std::endl;
-        return 0;
-    }
-
+    // set constant for integration
+    m->SetConstant(fint_const);
+    
     // set Metropolis as marginalization method
     m->SetMarginalizationMethod(BCIntegrate::kMargMetropolis);
     
@@ -173,9 +161,7 @@ int GeMSE_bkg_fit::RunFit() {
     }
     
     
-    // -----------------------------------------------------------
     // run marginalization to find right parameter limits
-    // -----------------------------------------------------------
     std::cout << "#### pre-run fit to set parameter limits ..." << std::endl;
     
     m->MCMCSetPrecision(BCEngineMCMC::kLow);
@@ -190,6 +176,24 @@ int GeMSE_bkg_fit::RunFit() {
         }
     }
 
+    
+    // set precision
+    if (fprecision=="low") {
+        m->MCMCSetPrecision(BCEngineMCMC::kLow);
+    }
+    else if (fprecision=="medium") {
+        m->MCMCSetPrecision(BCEngineMCMC::kMedium);
+    }
+    else if (fprecision=="high") {
+        m->MCMCSetPrecision(BCEngineMCMC::kHigh);
+    }
+    else {
+        std::cout << "##### unknown precision " << fprecision << std::endl;
+        return 0;
+    }
+    
+
+    
     TString results_name = fresults_name+"_All";
     
     // create new output object
@@ -289,25 +293,13 @@ int GeMSE_bkg_fit::RunFit() {
         std::cout << "###### Running fit without " << fname_process[j] << "..." << std::endl;
         
         // create new fitter object
-        BCMTF* m_bkg = new BCMTF();
+        BCMTF_HPGe* m_bkg = new BCMTF_HPGe();
         
         // set seed for reproducible results
         m_bkg->MCMCSetRandomSeed(21340);
         
-        // set precision
-        if (fprecision=="low") {
-            m_bkg->MCMCSetPrecision(BCEngineMCMC::kLow);
-        }
-        else if (fprecision=="medium") {
-            m_bkg->MCMCSetPrecision(BCEngineMCMC::kMedium);
-        }
-        else if (fprecision=="high") {
-            m_bkg->MCMCSetPrecision(BCEngineMCMC::kHigh);
-        }
-        else {
-            std::cout << "##### unknown precision " << fprecision << std::endl;
-            return 0;
-        }
+        // set constant for integration
+        m_bkg->SetConstant(fint_const);
         
         // set Metropolis as marginalization method
         m_bkg->SetMarginalizationMethod(BCIntegrate::kMargMetropolis);
@@ -349,9 +341,7 @@ int GeMSE_bkg_fit::RunFit() {
             
         }
         
-        // -----------------------------------------------------------
         // run marginalization to find right parameter limits
-        // -----------------------------------------------------------
         std::cout << "#### pre-run fit to set parameter limits ..." << std::endl;
         
         m_bkg->MCMCSetPrecision(BCEngineMCMC::kLow);
@@ -369,6 +359,23 @@ int GeMSE_bkg_fit::RunFit() {
                 }
             }
         }
+        
+        
+        // set precision
+        if (fprecision=="low") {
+            m_bkg->MCMCSetPrecision(BCEngineMCMC::kLow);
+        }
+        else if (fprecision=="medium") {
+            m_bkg->MCMCSetPrecision(BCEngineMCMC::kMedium);
+        }
+        else if (fprecision=="high") {
+            m_bkg->MCMCSetPrecision(BCEngineMCMC::kHigh);
+        }
+        else {
+            std::cout << "##### unknown precision " << fprecision << std::endl;
+            return 0;
+        }
+
         
         std::cout << "#### running actual fit ..." << std::endl;
 
@@ -743,6 +750,9 @@ int GeMSE_bkg_fit::ReadPar(TString FileName) {
     File >> fCL;
     getline(File, headerline);
     getline(File, headerline);
+    File >> fint_const;
+    getline(File, headerline);
+    getline(File, headerline);
     File >> fnBins;
     getline(File, headerline);
     getline(File, headerline);
@@ -831,6 +841,7 @@ int GeMSE_bkg_fit::ReadPar(TString FileName) {
     std::cout << "accuracy of MCMC: " << fprecision << std::endl;
     std::cout << "threshold for signal detection: " << fBF_limit << std::endl;
     std::cout << "CL for limit on activity: " << fCL << std::endl;
+    std::cout << "integration constant: " << fint_const << std::endl;
     std::cout << "number of bins: " << fnBins << std::endl;
     std::cout << "bin slope: " << fBinSlope << std::endl;
     std::cout << "fit range (keV): " << frange_low << " - " << frange_high << std::endl;
@@ -964,7 +975,7 @@ int GeMSE_bkg_fit::plot_stack()
     gStyle->SetOptStat(0);
     c2->SetLogy();
     
-    hmeas->SetMinimum(1.e-3);
+    hmeas->SetMinimum(1.e-4);
     hmeas->GetXaxis()->SetTitle("Energy (keV)");
     hmeas->GetYaxis()->SetTitle("Counts (keV^{-1} day^{-1})");
     
@@ -1012,7 +1023,7 @@ int GeMSE_bkg_fit::plot_stack()
 // Set new parameter limits (eliminate empty bins)
 // ----------------------------------------------------
 
-void GeMSE_bkg_fit::SetNewLimits(BCMTF* m, TString parameter) {
+void GeMSE_bkg_fit::SetNewLimits(BCMTF_HPGe* m, TString parameter) {
     
     TH1D* hist = m->GetMarginalized(parameter)->GetHistogram();
     
