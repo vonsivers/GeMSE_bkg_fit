@@ -1,0 +1,54 @@
+# results name
+results/test_fit
+# accuracy of MCMC (low/medium/high)
+low
+# threshold on Bayes Factor for signal detection
+0.33
+# CL for activity limit
+0.95
+# number of bins
+200
+# bin slope
+2.
+# fit range low / up (keV)
+100.	3000.
+# integrated muon flux (cm^-2 s-^1) / relative uncertainty
+7.07197e-06	0.3
+# Pb210 activity / uncertainty (Bq/kg)
+7.2	0.5
+# measured spectrum
+/Users/sivers/Desktop/GeMSE/background_simulations/background_fit/measured_spectrum/background_closedShielding_N2_MV_spectrum_calibrated_combined.root
+# background spectra folder
+/Users/sivers/Desktop/GeMSE/background_simulations/background_fit/simulated_spectra/convoluted/
+# muon spectrum / parameter limit low / parameter limit up
+simulated_bkg_muons.root	0.	10000.
+# Pb210 spectrum
+simulated_bkg_innerPbShielding_Pb210.root	0.	5000.
+# simulated background Rn
+simulated_bkg_Rn.root	0.	5000.
+# simulated background Cu shielding
+Co56	simulated_bkg_CuShielding_combined_Co56.root	0.	5000.
+Co57	simulated_bkg_CuShielding_combined_Co57.root	0.	5000.
+Co58	simulated_bkg_CuShielding_combined_Co58.root	0.	5000.
+Co60	simulated_bkg_CuShielding_combined_Co60.root	0.	5000.
+K40	simulated_bkg_CuShielding_combined_K40.root	0.	5000.
+Mn54	simulated_bkg_CuShielding_combined_Mn54.root	0.	5000.
+U238	simulated_bkg_CuShielding_combined_U238.root	0.	5000.
+Th232	simulated_bkg_CuShielding_combined_Th232.root	0.	5000.
+# simulated background cryostat
+Co56	simulated_bkg_cryostat_Co56.root	0.	5000.
+Co57	simulated_bkg_cryostat_Co57.root	0.	5000.
+Co58	simulated_bkg_cryostat_Co58.root	0.	5000.
+Co60	simulated_bkg_cryostat_Co60.root	0.	5000.
+K40	simulated_bkg_cryostat_K40.root	0.	5000.
+Mn54	simulated_bkg_cryostat_Mn54.root	0.	5000.
+U238	simulated_bkg_cryostat_U238.root	0.	5000.
+Th232	simulated_bkg_cryostat_Th232.root	0.	5000.
+# simulated background Ge crystal
+Ge68	simulated_bkg_Ge_crystal_Ge68.root	0.	5000.
+Zn65	simulated_bkg_Ge_crystal_Zn65.root	0.	5000.
+Co56	simulated_bkg_Ge_crystal_Co56.root	0.	5000.
+Co57	simulated_bkg_Ge_crystal_Co57.root	0.	5000.
+Co58	simulated_bkg_Ge_crystal_Co58.root	0.	5000.
+Co60	simulated_bkg_Ge_crystal_Co60.root	0.	5000.
+Mn54	simulated_bkg_Ge_crystal_Mn54.root	0.	5000.
