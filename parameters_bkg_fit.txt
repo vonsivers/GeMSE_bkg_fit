@@ -1,17 +1,17 @@
 # results name
 results/test_fit
 # accuracy of MCMC (low/medium/high)
-low
+medium
 # threshold on Bayes Factor for signal detection
-0.33
+0.05
 # CL for activity limit
 0.95
 # integration constant
-1.5
+2.5
 # number of bins
-200
+300
 # bin slope
-2.
+1.5
 # fit range low / up (keV)
 100.	3000.
 # integrated muon flux (cm^-2 s-^1) / relative uncertainty
@@ -25,9 +25,8 @@ low
 # muon spectrum / parameter limit low / parameter limit up
 simulated_bkg_muons.root	0.	10000.
 # Pb210 spectrum
-simulated_bkg_innerPbShielding_Pb210.root	0.	5000.
+simulated_bkg_innerPbShieldingCombined_Pb210.root	0.	5000.
 # simulated background Rn
-simulated_bkg_Rn.root	0.	5000.
 # simulated background Cu shielding
 Co56	simulated_bkg_CuShielding_combined_Co56.root	0.	5000.
 Co57	simulated_bkg_CuShielding_combined_Co57.root	0.	5000.
@@ -38,14 +37,6 @@ Mn54	simulated_bkg_CuShielding_combined_Mn54.root	0.	5000.
 U238	simulated_bkg_CuShielding_combined_U238.root	0.	5000.
 Th232	simulated_bkg_CuShielding_combined_Th232.root	0.	5000.
 # simulated background cryostat
-Co56	simulated_bkg_cryostat_Co56.root	0.	5000.
-Co57	simulated_bkg_cryostat_Co57.root	0.	5000.
-Co58	simulated_bkg_cryostat_Co58.root	0.	5000.
-Co60	simulated_bkg_cryostat_Co60.root	0.	5000.
-K40	simulated_bkg_cryostat_K40.root	0.	5000.
-Mn54	simulated_bkg_cryostat_Mn54.root	0.	5000.
-U238	simulated_bkg_cryostat_U238.root	0.	5000.
-Th232	simulated_bkg_cryostat_Th232.root	0.	5000.
 # simulated background Ge crystal
 Ge68	simulated_bkg_Ge_crystal_Ge68.root	0.	5000.
 Zn65	simulated_bkg_Ge_crystal_Zn65.root	0.	5000.

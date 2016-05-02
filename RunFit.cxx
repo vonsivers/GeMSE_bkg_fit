@@ -13,15 +13,17 @@ using namespace std;
 int main(int argc, char *argv[]) {
     
     // argc should be 2 for correct execution
-    if ( argc != 2 ) {
+    if ( argc != 3 ) {
         
         // We print argv[0] assuming it is the program name
-        std::cout<<"usage: "<< argv[0] <<" <parameters.txt>" << std::endl;
+        std::cout<<"usage: "<< argv[0] <<" <parameters.txt> 'BF/noBF'" << std::endl;
         return 0;
     }
 
     TString FileName = argv[1];
-    
+
+    TString option = argv[2];
+
     // create a new fitter
     GeMSE_bkg_fit* fit = new GeMSE_bkg_fit();
     
@@ -29,7 +31,7 @@ int main(int argc, char *argv[]) {
     fit->ReadPar(FileName);
     
     // run the fit
-    fit->RunFit();
+    fit->RunFit(option);
     
     return 1;
 }

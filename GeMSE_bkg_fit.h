@@ -33,7 +33,7 @@ public:
     /**
      * Run the fit
      */
-    int RunFit();
+    int RunFit(TString option);
 
 
 private:

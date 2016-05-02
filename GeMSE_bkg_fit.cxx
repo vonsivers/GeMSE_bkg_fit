@@ -36,10 +36,15 @@ GeMSE_bkg_fit::~GeMSE_bkg_fit()
 // run main fit
 // ----------------------------------------------------
 
-int GeMSE_bkg_fit::RunFit() {
+int GeMSE_bkg_fit::RunFit(TString option="") {
     
     if (!fParSet) {
         std::cout << "#### ERROR: parameters have not been set!" << std::endl;
+        return 1;
+    }
+    
+    if (option!="noBF" && option!="BF") {
+        std::cout << "#### ERROR: invalid option " << option << std::endl;
         return 1;
     }
     
@@ -61,20 +66,27 @@ int GeMSE_bkg_fit::RunFit() {
     
     int j=0;
 
-    if (!AddHistMuons("Muons", fSim_folder+fMuon_name, fparlimit_low[j], fparlimit_up[j],fmuon_flux_err)) {
-        return 0;
+    if (fMuon_name!="#") {
+        if (!AddHistMuons("Muons", fSim_folder+fMuon_name, fparlimit_low[j], fparlimit_up[j],fmuon_flux_err)) {
+            return 0;
+        }
+        j++;
     }
-    j++;
-    
-    if (!AddHistPb("innerPbShielding_Pb210", fSim_folder+fPb210_name, fparlimit_low[j], fparlimit_up[j])) {
-        return 0;
+   
+    if (fPb210_name!="#") {
+        if (!AddHistPb("innerPbShielding_Pb210", fSim_folder+fPb210_name, fparlimit_low[j], fparlimit_up[j])) {
+            return 0;
+        }
+        j++;
     }
-    j++;
-    
-    if (!AddHistSim("SampleCavity_Rn222", fSim_folder+fRn_name, fparlimit_low[j], fparlimit_up[j])) {
-        return 0;
+
+   
+    if (fRn_name!="#") {
+        if (!AddHistSim("SampleCavity_Rn222", fSim_folder+fRn_name, fparlimit_low[j], fparlimit_up[j])) {
+            return 0;
+        }
+        j++;
     }
-    j++;
     
     for (int i=0; i<fCuShielding_name.size(); ++i) {
         if (!AddHistSim("CuShielding_"+fCuShielding_isotope[i], fSim_folder+fCuShielding_name[i], fparlimit_low[j], fparlimit_up[j])) {
@@ -259,6 +271,12 @@ int GeMSE_bkg_fit::RunFit() {
             factivity_lim.push_back(counts_limit / fintegral[i] / ft_live);
         }
         
+        // if Bayes Factor not needed write activity string now
+        if (option=="noBF") {
+            fActivityStr.push_back(TString::Format("%1.2e - %1.2e + %1.2e",factivity[i],factivity_err_low[i],factivity_err_up[i]));
+        }
+
+        
     }
 
     
@@ -285,141 +303,147 @@ int GeMSE_bkg_fit::RunFit() {
     // run bkg fit
     // ------------------------------
     
-    // loop over all simulated spectra
-    
-    for (int j=0; j<Nprocesses; ++j) {
-        TString results_name_bkg = fresults_name+"_"+fname_process[j];
-        
-        std::cout << "###### Running fit without " << fname_process[j] << "..." << std::endl;
-        
-        // create new fitter object
-        BCMTF_HPGe* m_bkg = new BCMTF_HPGe();
-        
-        // set seed for reproducible results
-        m_bkg->MCMCSetRandomSeed(21340);
-        
-        // set constant for integration
-        m_bkg->SetConstant(fint_const);
-        
-        // set Metropolis as marginalization method
-        m_bkg->SetMarginalizationMethod(BCIntegrate::kMargMetropolis);
-        
-        // set number of bins for marginalized distributions
-        //m->SetNbins(500);
-        
-        // add channels (the order is important!)
-        m_bkg->AddChannel("measured_spectrum");
-        
-        // set data
-        m_bkg->SetData("measured_spectrum", fhist_meas);
+    // if Bayes Factor needed
+    if (option=="BF") {
         
         // loop over all simulated spectra
-        for (int i=0; i<Nprocesses; ++i) {
+        for (int j=0; j<Nprocesses; ++j) {
+            TString results_name_bkg = fresults_name+"_"+fname_process[j];
             
-            // leave out one process
-            if (i!=j) {
-                
-                // add process
-                m_bkg->AddProcess(fname_process[i], fparlimit_low[i], fparlimit_up[i]);
-                
-                // set template and histograms
-                m_bkg->SetTemplate("measured_spectrum", fname_process[i], *(TH1D*)(fhist_process->At(i)));
-                
-                // set prior
-                if (fprior_name[i]=="Const") {
-                    m_bkg->SetPriorConstant(fname_process[i]);
-                }
-                else if (fprior_name[i]=="Gauss") {
-                    m_bkg->SetPriorGauss(fname_process[i],fprior_mean[i],fprior_sigma[i]);
-                }
-                else {
-                    std::cout << "##### unknown prior " << fprior_name[i] << std::endl;
-                    return 0;
-                }
-            }
+            std::cout << "###### Running fit without " << fname_process[j] << "..." << std::endl;
             
+            // create new fitter object
+            BCMTF_HPGe* m_bkg = new BCMTF_HPGe();
             
-        }
-        
-        // run marginalization to find right parameter limits
-        std::cout << "#### pre-run fit to set parameter limits ..." << std::endl;
-        
-        m_bkg->MCMCSetPrecision(BCEngineMCMC::kLow);
-        
-        // do it 2 times
-        for (int i=0; i<2; ++i) {
+            // set seed for reproducible results
+            m_bkg->MCMCSetRandomSeed(21340);
             
-            m_bkg->MarginalizeAll();
+            // set constant for integration
+            m_bkg->SetConstant(fint_const);
             
+            // set Metropolis as marginalization method
+            m_bkg->SetMarginalizationMethod(BCIntegrate::kMargMetropolis);
+            
+            // set number of bins for marginalized distributions
+            //m->SetNbins(500);
+            
+            // add channels (the order is important!)
+            m_bkg->AddChannel("measured_spectrum");
+            
+            // set data
+            m_bkg->SetData("measured_spectrum", fhist_meas);
+            
+            // loop over all simulated spectra
             for (int i=0; i<Nprocesses; ++i) {
                 
                 // leave out one process
                 if (i!=j) {
-                    SetNewLimits(m_bkg, fname_process[i]);
+                    
+                    // add process
+                    m_bkg->AddProcess(fname_process[i], fparlimit_low[i], fparlimit_up[i]);
+                    
+                    // set template and histograms
+                    m_bkg->SetTemplate("measured_spectrum", fname_process[i], *(TH1D*)(fhist_process->At(i)));
+                    
+                    // set prior
+                    if (fprior_name[i]=="Const") {
+                        m_bkg->SetPriorConstant(fname_process[i]);
+                    }
+                    else if (fprior_name[i]=="Gauss") {
+                        m_bkg->SetPriorGauss(fname_process[i],fprior_mean[i],fprior_sigma[i]);
+                    }
+                    else {
+                        std::cout << "##### unknown prior " << fprior_name[i] << std::endl;
+                        return 0;
+                    }
+                }
+                
+                
+            }
+            
+            // run marginalization to find right parameter limits
+            std::cout << "#### pre-run fit to set parameter limits ..." << std::endl;
+            
+            m_bkg->MCMCSetPrecision(BCEngineMCMC::kLow);
+            
+            // do it 2 times
+            for (int i=0; i<2; ++i) {
+                
+                m_bkg->MarginalizeAll();
+                
+                for (int i=0; i<Nprocesses; ++i) {
+                    
+                    // leave out one process
+                    if (i!=j) {
+                        SetNewLimits(m_bkg, fname_process[i]);
+                    }
                 }
             }
+            
+            
+            // set precision
+            if (fprecision=="low") {
+                m_bkg->MCMCSetPrecision(BCEngineMCMC::kLow);
+            }
+            else if (fprecision=="medium") {
+                m_bkg->MCMCSetPrecision(BCEngineMCMC::kMedium);
+            }
+            else if (fprecision=="high") {
+                m_bkg->MCMCSetPrecision(BCEngineMCMC::kHigh);
+            }
+            else {
+                std::cout << "##### unknown precision " << fprecision << std::endl;
+                return 0;
+            }
+            
+            
+            std::cout << "#### running actual fit ..." << std::endl;
+            
+            // marginalize
+            m_bkg->MarginalizeAll();
+            
+            // find global mode
+            m_bkg->FindMode( m_bkg->GetBestFitParameters() );
+            
+            // calculate normalization
+            m_bkg->Integrate();
+            
+            // get p-value
+            m_bkg->CalculatePValue( m_bkg->GetBestFitParameters() );
+            
+            // print marginalized distributions
+            m_bkg->PrintAllMarginalized(results_name_bkg+"_distributions.pdf");
+            
+            // print results file
+            m_bkg->PrintResults(results_name_bkg+"_results.txt");
+            
+            // set up model manager
+            // create new BCTemplateFitterManager
+            BCModelManager * smm = new BCModelManager();
+            smm->AddModel(m_bkg);
+            smm->AddModel(m);
+            
+            // compare models
+            double BayesFactor = smm->BayesFactor(0,1);
+            
+            // check for positive signal and calculate activity
+            if (BayesFactor<fBF_limit) {
+                fActivityStr.push_back(TString::Format("%1.2e - %1.2e + %1.2e \t %1.2e",factivity[j],factivity_err_low[j],factivity_err_up[j],BayesFactor));
+            }
+            else {
+                fActivityStr.push_back(TString::Format("< %1.2e \t %1.2e",factivity_lim[j],BayesFactor));
+            }
+            
+            delete m_bkg;
+            delete smm;
+            
+            
         }
-        
-        
-        // set precision
-        if (fprecision=="low") {
-            m_bkg->MCMCSetPrecision(BCEngineMCMC::kLow);
-        }
-        else if (fprecision=="medium") {
-            m_bkg->MCMCSetPrecision(BCEngineMCMC::kMedium);
-        }
-        else if (fprecision=="high") {
-            m_bkg->MCMCSetPrecision(BCEngineMCMC::kHigh);
-        }
-        else {
-            std::cout << "##### unknown precision " << fprecision << std::endl;
-            return 0;
-        }
-
-        
-        std::cout << "#### running actual fit ..." << std::endl;
-
-        // marginalize
-        m_bkg->MarginalizeAll();
-        
-        // find global mode
-        m_bkg->FindMode( m_bkg->GetBestFitParameters() );
-        
-        // calculate normalization
-        m_bkg->Integrate();
-        
-        // get p-value
-        m_bkg->CalculatePValue( m_bkg->GetBestFitParameters() );
-        
-        // print marginalized distributions
-        m_bkg->PrintAllMarginalized(results_name_bkg+"_distributions.pdf");
-        
-        // print results file
-        m_bkg->PrintResults(results_name_bkg+"_results.txt");
-        
-        // set up model manager
-        // create new BCTemplateFitterManager
-        BCModelManager * smm = new BCModelManager();
-        smm->AddModel(m_bkg);
-        smm->AddModel(m);
-        
-        // compare models
-        double BayesFactor = smm->BayesFactor(0,1);
-        
-        // check for positive signal and calculate activity
-        if (BayesFactor<fBF_limit) {
-            fActivityStr.push_back(TString::Format("%1.2e - %1.2e + %1.2e \t %1.2e",factivity[j],factivity_err_low[j],factivity_err_up[j],BayesFactor));
-        }
-        else {
-            fActivityStr.push_back(TString::Format("< %1.2e \t %1.2e",factivity_lim[j],BayesFactor));
-        }
-        
-        delete m_bkg;
-        delete smm;
-        
-        
     }
     
+    // ------------------------------
+    // write summary file
+    // ------------------------------
     
     std::cout << "###### Writing summary file ..." << std::endl;
     
@@ -452,6 +476,9 @@ int GeMSE_bkg_fit::RunFit() {
 int GeMSE_bkg_fit::AddHistPb(TString name, TString file_name, double lim_low, double lim_up) {
     
     TH1D* hPb210 = GetSimHist(file_name,name);
+    
+    //hPb210->Rebin(5);
+    //hPb210->Scale(1./5.);
     
     if (hPb210==0) {
         return 0;
@@ -774,26 +801,41 @@ int GeMSE_bkg_fit::ReadPar(TString FileName) {
     File >> fSim_folder;
     getline(File, headerline);
     getline(File, headerline);
-    File >> fMuon_name >> parlimit_low >> parlimit_up;
-    fparlimit_low.push_back(parlimit_low);
-    fparlimit_up.push_back(parlimit_up);
     getline(File, headerline);
-    getline(File, headerline);
-    File >> fPb210_name >> parlimit_low >> parlimit_up;
-    fparlimit_low.push_back(parlimit_low);
-    fparlimit_up.push_back(parlimit_up);
-    getline(File, headerline);
-    getline(File, headerline);
-    File >> fRn_name >> parlimit_low >> parlimit_up;
-    fparlimit_low.push_back(parlimit_low);
-    fparlimit_up.push_back(parlimit_up);
-    getline(File, headerline);
-    getline(File, headerline);
+    std::stringstream ss1(headerline);
+    ss1 >> fMuon_name >> parlimit_low >> parlimit_up;
+    if (fMuon_name!="#") {
+        fparlimit_low.push_back(parlimit_low);
+        fparlimit_up.push_back(parlimit_up);
+        getline(File, headerline);
+        getline(File, headerline);
+    }
+    else {
+        getline(File, headerline);
+    }
+    std::stringstream ss2(headerline);
+    ss2 >> fPb210_name >> parlimit_low >> parlimit_up;
+    if (fPb210_name!="#") {
+        fparlimit_low.push_back(parlimit_low);
+        fparlimit_up.push_back(parlimit_up);
+        getline(File, headerline);
+        getline(File, headerline);
+    }
+    else {
+        getline(File, headerline);
+    }
+    std::stringstream ss3(headerline);
+    ss3 >> fRn_name >> parlimit_low >> parlimit_up;
+    if (fRn_name!="#") {
+        fparlimit_low.push_back(parlimit_low);
+        fparlimit_up.push_back(parlimit_up);
+        getline(File, headerline);
+    }
     while (true)
     {
         getline(File, headerline);
-        std::stringstream ss(headerline);
-        ss >> isotope_name >> spectrum_name >> parlimit_low >> parlimit_up;
+        std::stringstream ss4(headerline);
+        ss4 >> isotope_name >> spectrum_name >> parlimit_low >> parlimit_up;
         
         if(isotope_name=="#") break;
         
@@ -807,8 +849,8 @@ int GeMSE_bkg_fit::ReadPar(TString FileName) {
     while (true)
     {
         getline(File, headerline);
-        std::stringstream ss(headerline);
-        ss >> isotope_name >> spectrum_name >> parlimit_low >> parlimit_up;
+        std::stringstream ss5(headerline);
+        ss5 >> isotope_name >> spectrum_name >> parlimit_low >> parlimit_up;
         
         if(isotope_name=="#") break;
         
@@ -822,8 +864,8 @@ int GeMSE_bkg_fit::ReadPar(TString FileName) {
     while (!File.eof())
     {
         getline(File, headerline);
-        std::stringstream ss(headerline);
-        ss >> isotope_name >> spectrum_name >> parlimit_low >> parlimit_up;
+        std::stringstream ss6(headerline);
+        ss6 >> isotope_name >> spectrum_name >> parlimit_low >> parlimit_up;
         
         fGeCrystal_isotope.push_back(isotope_name);
         fGeCrystal_name.push_back(spectrum_name);
@@ -906,68 +948,135 @@ int GeMSE_bkg_fit::plot_stack()
     THStack* stack = (THStack*) c->GetPrimitive("");
     TList* list = stack->GetHists();
     
-    TH1D* hMuons = (TH1D*) list->FindObject("Muons");
-    TH1D* hRn = (TH1D*) list->FindObject("SampleCavity_Rn222");
-    TH1D* hPb210 = (TH1D*) list->FindObject("innerPbShielding_Pb210");
-    
-    // combine CuShielding
-    THStack* stack_CuShielding = new THStack("stack_CuShielding",";Energy (keV);Counts");
-    
-    for (int i=0; i<fCuShielding_name.size(); ++i) {
-
-        TH1D* hCuShielding_isotope = (TH1D*) list->FindObject("CuShielding_"+fCuShielding_isotope[i]);
-        stack_CuShielding->Add(hCuShielding_isotope);
-        //delete hCuShielding_isotope;
-    }
-    TH1D* hCuShielding = (TH1D*) stack_CuShielding->GetStack()->Last();
-
-
-    // combine cryostat
-    THStack* stack_Cryostat = new THStack("stack_Cryostat",";Energy (keV);Counts");
-    
-    for (int i=0; i<fCryostat_name.size(); ++i) {
-        
-        TH1D* hCryostat_isotope = (TH1D*) list->FindObject("Cryostat_"+fCryostat_isotope[i]);
-        stack_Cryostat->Add(hCryostat_isotope);
-        //delete hCryostat_isotope;
-    }
-    TH1D* hCryostat = (TH1D*) stack_Cryostat->GetStack()->Last();
-
-    // combine Ge crystal
-    THStack* stack_Ge = new THStack("stack_Ge",";Energy (keV);Counts");
-    
-    for (int i=0; i<fGeCrystal_name.size(); ++i) {
-        
-        TH1D* hGeCrystal_isotope = (TH1D*) list->FindObject("Ge_"+fGeCrystal_isotope[i]);
-        stack_Ge->Add(hGeCrystal_isotope);
-        //delete hGeCrystal_isotope;
-    }
-    TH1D* hGe = (TH1D*) stack_Ge->GetStack()->Last();
-    
-
     // stack all histos
     THStack* stack_all = new THStack("stack_all",";Energy (keV);Counts");
-    stack_all->Add(hMuons);
-    stack_all->Add(hRn);
-    stack_all->Add(hPb210);
-    stack_all->Add(hCuShielding);
-    stack_all->Add(hCryostat);
-    stack_all->Add(hGe);
+
+    TLegend* leg1 = new TLegend(0.7,0.5,0.9,0.9);
+    leg1->AddEntry(hmeas,"Data","p");
     
-    TH1D* hsum = (TH1D*) stack_all->GetStack()->Last();
-    
-    
-    // scale all histos
+    // scale histo
     hmeas->Sumw2();
     hmeas->Scale(1./ft_live*86400.,"width");
-    hsum->Scale(1./ft_live*86400.,"width");
-    hMuons->Scale(1./ft_live*86400.,"width");
-    hRn->Scale(1./ft_live*86400.,"width");
-    hPb210->Scale(1./ft_live*86400.,"width");
-    hCuShielding->Scale(1./ft_live*86400.,"width");
-    hCryostat->Scale(1./ft_live*86400.,"width");
-    hGe->Scale(1./ft_live*86400.,"width");
     
+    if (fMuon_name!="#") {
+        TH1D* hMuons = (TH1D*) list->FindObject("Muons");
+        hMuons->Scale(1./ft_live*86400.,"width");
+        hMuons->SetLineColor(3);
+        hMuons->SetFillStyle(0);
+        stack_all->Add(hMuons);
+        leg1->AddEntry(hMuons,"Muons","l");
+    }
+    
+    if (fRn_name!="#") {
+        TH1D* hRn = (TH1D*) list->FindObject("SampleCavity_Rn222");
+        hRn->Scale(1./ft_live*86400.,"width");
+        hRn->SetLineColor(4);
+        hRn->SetFillStyle(0);
+        stack_all->Add(hRn);
+        leg1->AddEntry(hRn,"Rn222","l");
+    }
+    
+    if (fPb210_name!="#") {
+        TH1D* hPb210 = (TH1D*) list->FindObject("innerPbShielding_Pb210");
+        hPb210->Scale(1./ft_live*86400.,"width");
+        hPb210->SetLineColor(5);
+        hPb210->SetFillStyle(0);
+        stack_all->Add(hPb210);
+        leg1->AddEntry(hPb210,"Pb210","l");
+    }
+    
+    // combine CuShielding
+    if (fCuShielding_name.size()>0) {
+        THStack* stack_CuShielding = new THStack("stack_CuShielding",";Energy (keV);Counts");
+        TLegend* leg_CuShielding = new TLegend(0.7,0.5,0.9,0.9);
+        
+        for (int i=0; i<fCuShielding_name.size(); ++i) {
+            
+            TH1D* hCuShielding_isotope = (TH1D*) list->FindObject("CuShielding_"+fCuShielding_isotope[i]);
+            hCuShielding_isotope->SetLineColor(i+1);
+            hCuShielding_isotope->SetFillStyle(0);
+            stack_CuShielding->Add(hCuShielding_isotope);
+            leg_CuShielding->AddEntry(hCuShielding_isotope,fCuShielding_isotope[i],"l");
+        }
+        TCanvas* c_CuShielding = new TCanvas("c_CuShielding");
+        stack_CuShielding->SetMinimum(1.e-4);
+        c_CuShielding->SetLogy();
+        stack_CuShielding->Draw("nostack");
+        leg_CuShielding->Draw();
+        c_CuShielding->SaveAs(fresults_name+"_All_stack_CuShielding.pdf");
+        c_CuShielding->SaveAs(fresults_name+"_All_stack_CuShielding.root");
+        
+        TH1D* hCuShielding = (TH1D*) stack_CuShielding->GetStack()->Last();
+        hCuShielding->Scale(1./ft_live*86400.,"width");
+        hCuShielding->SetLineColor(6);
+        hCuShielding->SetFillStyle(0);
+        stack_all->Add(hCuShielding);
+        leg1->AddEntry(hCuShielding,"CuShielding","l");
+    }
+
+    // combine cryostat
+    if (fCryostat_name.size()>0) {
+        THStack* stack_Cryostat = new THStack("stack_Cryostat",";Energy (keV);Counts");
+        TLegend* leg_Cryostat = new TLegend(0.7,0.5,0.9,0.9);
+
+        for (int i=0; i<fCryostat_name.size(); ++i) {
+            
+            TH1D* hCryostat_isotope = (TH1D*) list->FindObject("Cryostat_"+fCryostat_isotope[i]);
+            hCryostat_isotope->SetLineColor(i+1);
+            hCryostat_isotope->SetFillStyle(0);
+            stack_Cryostat->Add(hCryostat_isotope);
+            leg_Cryostat->AddEntry(hCryostat_isotope,fCryostat_isotope[i],"l");
+        }
+        TCanvas* c_Cryostat = new TCanvas("c_Cryostat");
+        stack_Cryostat->SetMinimum(1.e-4);
+        c_Cryostat->SetLogy();
+        stack_Cryostat->Draw("nostack");
+        leg_Cryostat->Draw();
+        c_Cryostat->SaveAs(fresults_name+"_All_stack_Cryostat.pdf");
+        c_Cryostat->SaveAs(fresults_name+"_All_stack_Cryostat.root");
+        
+        TH1D* hCryostat = (TH1D*) stack_Cryostat->GetStack()->Last();
+        hCryostat->Scale(1./ft_live*86400.,"width");
+        hCryostat->SetLineColor(7);
+        hCryostat->SetFillStyle(0);
+        stack_all->Add(hCryostat);
+        leg1->AddEntry(hCryostat,"Cryostat","l");
+    }
+    
+
+    // combine Ge crystal
+    if (fGeCrystal_name.size()>0) {
+        THStack* stack_Ge = new THStack("stack_Ge",";Energy (keV);Counts");
+        TLegend* leg_Ge = new TLegend(0.7,0.5,0.9,0.9);
+
+        for (int i=0; i<fGeCrystal_name.size(); ++i) {
+            
+            TH1D* hGeCrystal_isotope = (TH1D*) list->FindObject("Ge_"+fGeCrystal_isotope[i]);
+            hGeCrystal_isotope->SetLineColor(i+1);
+            hGeCrystal_isotope->SetFillStyle(0);
+            stack_Ge->Add(hGeCrystal_isotope);
+            leg_Ge->AddEntry(hGeCrystal_isotope,fGeCrystal_isotope[i],"l");
+        }
+        TCanvas* c_Ge = new TCanvas("c_Ge");
+        stack_Ge->SetMinimum(1.e-4);
+        c_Ge->SetLogy();
+        stack_Ge->Draw("nostack");
+        leg_Ge->Draw();
+        c_Ge->SaveAs(fresults_name+"_All_stack_GeCrystal.pdf");
+        c_Ge->SaveAs(fresults_name+"_All_stack_GeCrystal.root");
+        
+        TH1D* hGe = (TH1D*) stack_Ge->GetStack()->Last();
+        hGe->Scale(1./ft_live*86400.,"width");
+        hGe->SetLineColor(8);
+        hGe->SetFillStyle(0);
+        stack_all->Add(hGe);
+        leg1->AddEntry(hGe,"Ge","l");
+    }
+    
+    TH1D* hsum = (TH1D*) stack_all->GetStack()->Last();
+    //hsum->Scale(1./ft_live*86400.,"width");
+    leg1->AddEntry(hsum,"Simulation","l");
+
     //hmeas->GetXaxis()->SetRangeUser(100.,500.);
     
     // Draw
@@ -983,32 +1092,10 @@ int GeMSE_bkg_fit::plot_stack()
     hmeas->SetMarkerColor(1);
     hsum->SetLineColor(2);
     hsum->SetFillStyle(0);
-    hMuons->SetLineColor(3);
-    hMuons->SetFillStyle(0);
-    hRn->SetLineColor(4);
-    hRn->SetFillStyle(0);
-    hPb210->SetLineColor(5);
-    hPb210->SetFillStyle(0);
-    hCuShielding->SetLineColor(6);
-    hCuShielding->SetFillStyle(0);
-    hCryostat->SetLineColor(7);
-    hCryostat->SetFillStyle(0);
-    hGe->SetLineColor(8);
-    hGe->SetFillStyle(0);
-    
+
     hmeas->Draw("pe");
     stack_all->Draw("nostacksame");
     hsum->Draw("same");
-    
-    TLegend* leg1 = new TLegend(0.7,0.5,0.9,0.9);
-    leg1->AddEntry(hmeas,"Data","p");
-    leg1->AddEntry(hsum,"Simulation","l");
-    leg1->AddEntry(hMuons,"Muons","l");
-    leg1->AddEntry(hRn,"Rn222","l");
-    leg1->AddEntry(hPb210,"Pb210","l");
-    leg1->AddEntry(hCuShielding,"CuShielding","l");
-    leg1->AddEntry(hCryostat,"Cryostat","l");
-    leg1->AddEntry(hGe,"Ge","l");
     
     leg1->Draw();
     
